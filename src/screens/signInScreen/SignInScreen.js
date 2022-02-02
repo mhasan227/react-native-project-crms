@@ -1,5 +1,5 @@
 import React from 'react' ;
-import { View, Text , Image ,StyleSheet} from 'react-native' ;
+import { View, Text , Image ,StyleSheet,ScrollView} from 'react-native' ;
 import { withRouter } from 'react-router-dom'
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -84,10 +84,10 @@ class SignInScreen extends React.Component {
             let result = await res.json();
 
             
-            console.warn(result.result.userId);
-            console.warn(result.result.message);
+            //console.warn(result.result.userId);
+            //console.warn(result.result.message);
             if(result.result.result=== 'SUCCESS'){
-                this.props.navigation.navigate('HomeScreen',{result});
+                this.props.navigation.replace('HomeScreen',{result});
             }
             this.setInputValue( "responseMessage", result.result.message );
             //this.state.test = result.result.message;
@@ -100,7 +100,7 @@ class SignInScreen extends React.Component {
             
         }
         
-        console.warn('api');
+        //console.warn('api');
         
        
     }
@@ -109,7 +109,8 @@ class SignInScreen extends React.Component {
         return (
         <View style={styles.root}>
             
-           
+            <ScrollView showsVerticalScrollIndicator={false}>
+            
             <Image source={Logo} style={styles.logo} resizeMode="contain" />
             <CustomInput placeholder="Username" 
                         
@@ -124,9 +125,9 @@ class SignInScreen extends React.Component {
             <CustomButton  text="Sign In"
                           onPress={() => this.doLogin()}/>
 
-                          {/*<Text>{this.state.responseMessage}</Text>*/}
+                          {<Text>{this.state.responseMessage}</Text>}
             <VersionText/>
-                    
+            </ScrollView>    
         </View>
        )
     }
@@ -135,9 +136,9 @@ class SignInScreen extends React.Component {
 
 const styles = StyleSheet.create({
     logo: {
-      width:280,
+      width:'99%',
       height:280,
-      padding:70
+      padding:60
     },
 
     custom:{
@@ -146,7 +147,7 @@ const styles = StyleSheet.create({
     root:{
 
         alignItems: 'center',
-        padding:70
+        padding:60
         
     }
     

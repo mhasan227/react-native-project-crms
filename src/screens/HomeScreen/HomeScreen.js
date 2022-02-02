@@ -1,5 +1,5 @@
 import React from 'react' ;
-import { View, Text , StyleSheet, Pressable,StatusBar,TouchableOpacity,DrawerLayoutAndroid,FlatList,ScrollView, Alert} from 'react-native' ;
+import { View, Text , StyleSheet, Pressable,StatusBar,TouchableOpacity,DrawerLayoutAndroid,FlatList,ScrollView, Alert,LogBox,BackHandler,ToastAndroid } from 'react-native' ;
 import ToolbarAndroid from '@react-native-community/toolbar-android';
 import {useNavigation} from '@react-navigation/native'
 import VersionText from '../../components/VersionText';
@@ -9,8 +9,10 @@ import SearchableDropdown from 'react-native-searchable-dropdown';
 import {Picker} from '@react-native-picker/picker';
 import CustomButton from '../../components/CustomButton';
 import CustomInput from '../../components/CustomInput';
+import CustomInputS from '../../components/CustomInputS';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import DatePicker from 'react-native-datepicker';
+import Logo from '../../../assets/images/ic_launcher.png';
 
 
 
@@ -22,6 +24,7 @@ class HomeScreen extends React.Component {
         super(props);
         console.log(this.props);
         const data = this.props.route.params;
+       
        // let data = this.props.params;
         this.openDrawer = this.openDrawer.bind(this);
         this.onToolbarIconClick = this.onToolbarIconClick.bind(this);
@@ -58,6 +61,7 @@ class HomeScreen extends React.Component {
             creditAmount: '',
             invoiceDate:"",
             followDate:"",
+            followAMT :"",
 
             firstDropdownHandlerId: '',
             twoDropdownCustomerNumber: '',
@@ -78,8 +82,14 @@ class HomeScreen extends React.Component {
 
             salerPhone:'',
             customerName: '',
+            customerShop:'',
 
             responseMessage: '',
+
+            done: '',
+            followUps: '',
+            TGT:'',
+            ACH:'',
             
 
             
@@ -97,6 +107,7 @@ class HomeScreen extends React.Component {
      this.setState({ listViewIssueShow: true });
      
      this.setState({ collectionViewIssueShow: false });  // issu button press then no collection list show
+     this.issueListViewApi();
     }
 
     collectionBtnClick(){
@@ -109,6 +120,8 @@ class HomeScreen extends React.Component {
      this.setState({ formsectioncollection: true });
      this.setState({ listViewIssueShow: false });
      this.setState({ collectionViewIssueShow: true });
+
+     this.collectionListViewApi();
      
     }
     handleDropDown1Change(selectedVariantValue) {
@@ -139,13 +152,15 @@ class HomeScreen extends React.Component {
 
       }
         this.setInputValue("dropDownTwo",demoArray);
+
+        
       }
 
       handleDropDown2Change(selectedVariantValue) {
         
         this.setState({ itemss: selectedVariantValue });
         this.setState({ flag: 1 });
-        alert(selectedVariantValue);
+        //alert(selectedVariantValue);
         this.setState({ twoDropdownCustomerNumber: selectedVariantValue});
        // this.setState({ formsectionissue: true });
      //this.setState({ formsectioncollection: false });
@@ -173,10 +188,12 @@ class HomeScreen extends React.Component {
             if(selectedVariantValue===this.state.finalArray[i].value){
 
               this.setInputValue("customerName",this.state.finalArray[i].label);
+              this.setInputValue("customerShop",this.state.finalArray[i].shop);
             }
         }
 
         this.setState({ salerCustomerShow: true });
+        this.dashBoardInfo();
         this.issueListViewApi();
         this.collectionListViewApi();
         
@@ -221,19 +238,60 @@ class HomeScreen extends React.Component {
         if (position === 0) {
           this.props.navigation.navigate('InformationScreen',{data : this.state.userinfo});
         } else if (position === 1) {
-          this.props.navigation.navigate('SignInScreen');
+          this.props.navigation.reset({
+            index: 0,
+            routes: [{ name: 'SignInScreen' }],
+          });
+          //this.props.navigation.navigate('SignInScreen');
         }
     }
 
+    
     componentDidMount() {
-      
+     
       this.customer303DropDown();
       //this.midLevel302DropDown();
       this.salesOfficerDropDown();
 
       //this.issueListViewApi();
-      
+      LogBox.ignoreLogs(['VirtualizedLists should never be nested']);
+      LogBox.ignoreLogs(['Animated: `useNativeDriver`','componentWillReceiveProps']); // using for off error and warning message;
      }
+
+     async dashBoardInfo(){
+         let userName=this.state.firstDropdownHandlerId;
+      const gwUrl = 'http://maxisservice-api-gateway-maxis.nagadpay.com/';
+
+      try {
+          let res = await fetch(gwUrl + 'maxisservice-service/endpoint/entity/sosummary', {
+              method: "POST",
+              headers: {
+                  'Content-Type': 'application/json',
+                  token: "Bearer " + this.state.token,
+                  userid: this.state.mydatauser
+              },
+              body: JSON.stringify({
+
+                userId: userName,
+                tanentId: this.state.tenantId,
+              })
+          });
+
+          let result = await res.json();  
+          
+
+          
+          this.setInputValue("done",result.done);
+          this.setInputValue("followUps",result.followUps);
+          this.setInputValue("TGT",result.target);
+          this.setInputValue("ACH",result.achieved);
+ 
+      }catch (e) {
+          
+      }
+
+     }
+
 
      async collectionListViewApi(){
 
@@ -332,8 +390,10 @@ class HomeScreen extends React.Component {
       let mReceiptNumber= this.state.mReceiptNumber;
       let collectionDate  = this.state.collectionDate;
       let collectionAmount= this.state.collectionAmount;
+      let followDate= this.state.followDate;
+      let followAMT= this.state.followAMT;
      
-
+      //alert(followAMT);
 
       const gwUrl = 'http://maxisservice-api-gateway-maxis.nagadpay.com/';
 
@@ -356,18 +416,28 @@ class HomeScreen extends React.Component {
                 handlerId  :  handlerId,
                 
                 customer  : customer,
-                amount  : collectionAmount
+                amount  : collectionAmount,
+                followUpDate: followDate,
+                followUpAmount: followAMT
 
               })
           });
 
           let result = await res.json();         
           this.setInputValue("collectionResponse",result.status);
+
  
       }catch (e) {
           
       }
       this.collectionListViewApi();
+      this.dashBoardInfo();
+
+      this.setInputValue("mReceiptNumber",'');
+      this.setInputValue("collectionDate",'');
+      this.setInputValue("collectionAmount",'');
+      this.setInputValue("followDate",'');
+      this.setInputValue("followAMT",'');
      }
 
     async saveIssueForm(){
@@ -380,7 +450,7 @@ class HomeScreen extends React.Component {
       let invoiceNumber= this.state.invoiceNumber;
       let invoiceDate  = this.state.invoiceDate;
       let invoiceAmount= this.state.creditAmount;
-      let followDate= this.state.followDate;
+      
 
       
       const gwUrl = 'http://maxisservice-api-gateway-maxis.nagadpay.com/';
@@ -402,7 +472,7 @@ class HomeScreen extends React.Component {
                 invoiceNumber: invoiceNumber,
                 invoiceDate : invoiceDate,
                 handlerId  :  handlerId,
-                followUpDate: followDate,
+                
                 customer  : customer,
                 amount  : invoiceAmount
 
@@ -418,6 +488,8 @@ class HomeScreen extends React.Component {
       //this.state.invoiceNumber.clear();
       this.issueListViewApi(); // api call for after saving user can see instant update.
       this.setInputValue("invoiceNumber",'');
+      this.setInputValue("invoiceDate",'');
+      this.setInputValue("creditAmount",'');
 
     }
    
@@ -492,7 +564,8 @@ class HomeScreen extends React.Component {
         for (let i = 0; i < result.result.response.length; i++) {
           this.state.viaarray.push({
             label: result.result.response[i].name,
-            value: result.result.response[i].userId
+            value: result.result.response[i].userId,
+            shop : result.result.response[i].creatorOrganizationId
           });
         }
         
@@ -547,13 +620,14 @@ async midLevel302DropDown(){
             this.state.finalArray.push({
               label: checkArrayCustomer[j].label,
               value: checkArrayCustomer[j].value,
-              handelerId: result[i].handlerId
+              handelerId: result[i].handlerId,
+              shop: checkArrayCustomer[j].shop
             });
           }
        }
      }
-     console.warn(result[8].userCode);
-     console.warn(checkArrayCustomer[7].value);
+     //console.warn(result[8].userCode);
+     //console.warn(checkArrayCustomer[7].value);
       //this.setInputValue("alldata",result);
         
      /* this.setState({ check1: "myname" }, () => {                              
@@ -586,7 +660,7 @@ async midLevel302DropDown(){
             marginTop : 600
           }} onPress={() => {this.drawer.closeDrawer(); this.props.navigation.navigate('SignInScreen')}}>
                  <Icon 
-          name='power-outline'
+          name='person-circle'
           size={25}
           color='white'
           
@@ -605,18 +679,18 @@ async midLevel302DropDown(){
 
             
             <DrawerLayoutAndroid renderNavigationView={() => drawer} drawerWidth={300} ref={_drawer => (this.drawer = _drawer)}>
-               
+               <ScrollView keyboardShouldPersistTaps='handled'>
                 <View>
                     
                     <StatusBar backgroundColor="#0a254b" barStyle="light-content"/>
-                    <ToolbarAndroid style={styles.toolbar} title="Maxis Cr.MS" titleColor="white"
+                    <ToolbarAndroid style={styles.toolbar} title="  Grip" titleColor="white" logo={Logo}
                     //logo={require('../../../assets/images/maxislogo.png')}
                     navIcon={navIcon}
                     actions={[
                         { title: 'Information', iconName: 'md-help', iconSize: 30, show: 'never' },
                         { title: 'Logout', iconName: 'md-help', iconSize:30, show: 'never' },
                     ]}
-                    overflowIconName="md-more" onIconClicked={this.openDrawer} onActionSelected={this.onToolbarIconClick}
+                    overflowIconName="md-more" onActionSelected={this.onToolbarIconClick}
                     />
                          
                    
@@ -632,7 +706,7 @@ async midLevel302DropDown(){
                      <Picker.Item label="Select Sales officer" value="" style={styles.ddcolor} />
                      {this.state.item.map((data, key) =>(
           
-                    <Picker.Item key={key} label={data.label} value={data.value} />
+                    <Picker.Item key={key} label={data.label} value={data.value} style={styles.ddcolorList} />
                    ))}
                  </Picker>
             
@@ -645,7 +719,7 @@ async midLevel302DropDown(){
                      <Picker.Item label="Select Customer officer" value="" style={styles.ddcolor}/>
                       {this.state.dropDownTwo.map((data, key) =>(
           
-                    <Picker.Item key={key} label={data.label} value={data.value} />
+                    <Picker.Item key={key} label={data.label} value={data.value} style={styles.ddcolorList} />
                     ))}
                   </Picker>
              </View>
@@ -677,7 +751,7 @@ async midLevel302DropDown(){
                 {this.listViewCollectionRender()}
                 
              </View>
-           
+             </ScrollView>
             </DrawerLayoutAndroid>
             
        )
@@ -692,24 +766,25 @@ async midLevel302DropDown(){
                     <View style={styles.formSection}>
                       
                       <View style={styles.widthinput}> 
-                            <CustomInput placeholder="Invoice Number"
+                            <CustomInputS placeholder="Invoice"
                                   setvalue={(text) => this.setState({invoiceNumber: text})}
                                   value={this.state.invoiceNumber}
                               />
                         </View>
                         <View style={styles.formSectioncol}>
                               <View>
-                                    <Text>               Invoice Date</Text>
+                                    <Text>              {/*Invoice Date*/}                       </Text>
                               </View>
 
                               <View style={styles.width}> 
                                   <DatePicker
-                                      style={{width: 200,
-                                              marginLeft:-40
+                                      style={{width: '310%',
+                                              marginLeft:-42,
+                                              
                                              }}
                                       date={this.state.invoiceDate}
                                       mode="date"
-                                      placeholder="     Select Invoice date"
+                                      placeholder="Invoice date"
                                       format="YYYY-MM-DD"
                                       minDate="2016-05-01"
                                       maxDate="2025-06-01"
@@ -723,9 +798,12 @@ async midLevel302DropDown(){
                                           marginLeft: 36
                                         },
                                         dateInput: {
+                                          marginBottom: -2,
                                           marginLeft: 36,
+                                          height:'125%',
                                           borderColor: 'black',
-                                          backgroundColor:'white'
+                                          backgroundColor:'white',
+                                          borderRadius:5,
                                         }
                                         // ... You can check the source to find the other keys.
                                       }}
@@ -733,20 +811,28 @@ async midLevel302DropDown(){
                                       />
                               </View>
                         </View>
-                  </View>
+                
+                            <View style={styles.widthinput}> 
+                                <CustomInputS placeholder="Credit AMT"
+                                      setvalue={(text) => this.setState({ creditAmount: text})}
+                                      value={this.state.creditAmount}
+                                  />
+                            </View>
+                         
+                    </View>
                 </View>
 
-        <View style={styles.backgroundformP2}>
+        {/*<View style={styles.backgroundformP2}>
             <View style={styles.formSection}>
                 
                  <View style={styles.widthinput}> 
                     <CustomInput placeholder="Credit amount"
                           setvalue={(text) => this.setState({ creditAmount: text})}
-                            
+                          value={this.state.creditAmount}
                       />
                  </View>
                  
-                 <View style={styles.formSectioncol}>
+                 {/*<View style={styles.formSectioncol}>
                        <View>
                             <Text>              Followup date</Text>
                         </View>
@@ -779,22 +865,23 @@ async midLevel302DropDown(){
                               />
                          </View>
 
-                 </View>
-            </View>
-          </View>
+                 </View>*/}
+          {/*  </View>
+          </View>*/}
                    
             
-         <View style={styles.formSection}>
-            <View style={styles.btnwidth}>
+         <View style={styles.formSectionOnlySave}>
+            <View style={styles.btnwidthSave}>
                  
-            <CustomButton  text="Save"
+            <CustomButton  text="Save" 
+                           
                          onPress={() => this.saveIssueForm()}/>
 
             </View>
 
             <View style={styles.width}>
                  
-           <Text>{this.state.issuResponse}</Text>
+           {/*<Text>{this.state.issuResponse}</Text>*/}
 
             </View>
          </View>
@@ -811,13 +898,13 @@ async midLevel302DropDown(){
       if(this.state.formsectioncollection){
             return(
           <View> 
-                <View style={styles.backgroundformP2}>  
+                <View style={styles.backgroundformP2Collect}>  
                     <View style={styles.formSection}>
                        
                           <View style={styles.widthinputCollection}> 
-                          <CustomInput placeholder="Collection amount"
+                          <CustomInputS placeholder="Collection amount"
                                 setvalue={(text) => this.setState({ collectionAmount: text})}
-                                  
+                                value={this.state.collectionAmount}
                             />
                           </View>
                     
@@ -826,14 +913,14 @@ async midLevel302DropDown(){
 
                           <View style={styles.formSectioncol}>
                               <View>
-                                <Text>              Collection Date</Text>
+                                <Text>                                          {/*Collection Date*/}</Text>
                               </View>
-                              <View style={styles.width}> 
+                              <View style={styles.widthCollection}> 
                                     <DatePicker
-                                        style={{width: 204}}
+                                        style={{width: '355%',marginLeft:-24}}
                                         date={this.state.collectionDate}
                                         mode="date"
-                                        placeholder="        Select Collection date"
+                                        placeholder="Collection date"
                                         format="YYYY-MM-DD"
                                         minDate="2016-05-01"
                                         maxDate="2025-06-01"
@@ -848,7 +935,11 @@ async midLevel302DropDown(){
                                           },
                                           dateInput: {
                                             marginLeft: 36,
-                                            borderColor: 'black'
+                                            height: '125%',
+                                            marginBottom: -2,
+                                            borderRadius:5,
+                                            borderColor: 'black',
+                                            backgroundColor: 'white'
                                           }
                                           // ... You can check the source to find the other keys.
                                         }}
@@ -859,20 +950,65 @@ async midLevel302DropDown(){
                     </View>
                 </View>   
                 
-                <View style={styles.backgroundformP1}>
+                <View style={styles.backgroundformP1Collect}>
                     <View style={styles.formSection}>
                         
-                        <View style={styles.widthinputCollectionExtraLarge}> 
-                              <CustomInput placeholder="Money Receipt Number"
+                    <View style={styles.widthinputCollectionExtraLarge}> 
+                              <CustomInputS placeholder="Receipt"
                                     setvalue={(text) => this.setState({mReceiptNumber: text})}
-                                      
+                                    value={this.state.mReceiptNumber}
                                 />
                         </View>
+                        
+                        <View style={styles.formSectioncol}>
+                              <View>
+                                <Text>                                  {/*FollowUp Date*/}</Text>
+                              </View>
+                              <View style={styles.widthFollowUpDate}> 
+                                    <DatePicker
+                                        style={{width: '400%',marginLeft:-25}}
+                                        date={this.state.followDate}
+                                        mode="date"
+                                        placeholder="FuDT"
+                                        format="YYYY-MM-DD"
+                                        minDate="2016-05-01"
+                                        maxDate="2025-06-01"
+                                        confirmBtnText="Confirm"
+                                        cancelBtnText="Cancel"
+                                        customStyles={{
+                                          dateIcon: {
+                                            position: 'absolute',
+                                            left: 0,
+                                            top: 4,
+                                            marginLeft: 36
+                                          },
+                                          dateInput: {
+                                            height: '125%',
+                                            marginBottom: -2,
+                                            borderRadius:5,
+                                            marginLeft: 36,
+                                            borderColor: 'black',
+                                            backgroundColor: 'white'
+                                          }
+                                          // ... You can check the source to find the other keys.
+                                        }}
+                                        onDateChange={(date) => {this.setState({followDate: date})}}
+                                        />
+                                </View>
+                          </View>
+
+                          <View style={styles.widthinputCollectionExtraLarge2}> 
+                              <CustomInputS placeholder="Fu.AMT"
+                                    setvalue={(text) => this.setState({followAMT: text})}
+                                    value={this.state.followAMT}
+                                />
+                        </View>
+                         
                     </View>
                 </View>
                 
                   <View style={styles.formSection}>
-                      <View style={styles.btnwidth}>
+                      <View style={styles.btnwidthCollect}>
                           
                       <CustomButton  text="Save"
                                   onPress={() => this.saveCollectionForm()}/>
@@ -881,7 +1017,7 @@ async midLevel302DropDown(){
 
                       <View style={styles.width}>
                           
-                          <Text>{this.state.collectionResponse}</Text>
+                          {/*<Text>{this.state.collectionResponse}</Text>*/}
 
                       </View>
                   </View>
@@ -965,7 +1101,7 @@ async midLevel302DropDown(){
         }
         colorchange=false;
         this.state.onClickedCollection=false;
-        alert(colorchange);
+        //alert(colorchange);
       } 
 
       else {
@@ -1064,52 +1200,62 @@ async midLevel302DropDown(){
 
     listViewIssueRender(){
       if (this.state.listViewIssueShow) {
+
+          
         return (
-          <View style={styles.formSection}>
-          <FlatList
+          <View style={styles.formSectionlistWidthIssue}>
+           
+   
+ 
+          <FlatList nestedScrollEnabled
             data={this.state.issueListView}
-            renderItem={({item}) => (
-              <View style={styles.listviewDesign}> 
+            renderItem={({item , index}) => (
+              <View style={{backgroundColor: index % 2 == 0  ? "#d3d3d390" : "#FFFFFF",borderRadius:10,
+              padding:5, }}> 
                   <View style={styles.listviewRow}>
-                      <View>
-                        <Text style={styles.ddcolor}>Invoice No</Text>
+                      <View style={styles.width28}>
+                        <Text style={styles.ddcolor}>  INV.No</Text>
                         <Text style={styles.btnwidth}>{item.invoiceNumber}</Text>
                       </View>
-                      <View>
-                        <Text style={styles.ddcolor}>Amount</Text>
-                        <Text style={styles.btnwidth}>{item.amount}</Text>
-                      </View>
-                      <View>
-                        <Text style={styles.ddcolor}>Due</Text>
+                      
+                      <View style={styles.width28}>
+                        <Text style={styles.ddcolor}>  Due</Text>
                         <Text style={styles.btnwidth}>{item.remainingAmount}</Text>
                       </View>
+
+                      <View style={styles.width28}>
+                        <Text style={styles.ddcolor}>INV.DT</Text>
+                        <Text style={styles.btnwidthforList}>{item.invoiceDate}</Text>
+                      </View>
                   </View>
-                  <View style={styles.listviewRow}>
+                 {/* <View style={styles.listviewRow}>
                       <View style={styles.listviewRow}>
                         <Text style={styles.ddcolor}>Invoice Date :    </Text>
                         <Text style={styles.ddcolor}>{            item.invoiceDate}</Text>
                       </View>
                   </View>
-                  <View style={styles.listviewRow}>
+            */}
+                 {/* <View style={styles.listviewRow}>
                      <View style={styles.listviewRow}>
-                        <Text style={styles.ddcolor}>Follow Date  :    </Text>
-                        <Text style={styles.ddcolor}>{item.followUpDate}</Text>
+                        <Text style={styles.ddcolor}>  INV.DT  :    </Text>
+                        <Text style={styles.ddcolor}>{item.invoiceDate}</Text>
                       </View>
                   </View>
-                  <View style={styles.listviewRow}>
+            */}
+                 {/* <View style={styles.listviewRow}>
                      <View style={styles.listviewRow}>
                         <Text style={styles.ddcolor}>Entry Time    :    </Text>
                         <Text style={styles.ddcolor}>{item.creationTime}</Text>
                       </View>
                   </View>
-                  
+            */}
               </View>
 
             )}
           
           />
           
-          
+         
        </View>
           
         )
@@ -1119,36 +1265,41 @@ async midLevel302DropDown(){
   listViewCollectionRender(){
     if (this.state.collectionViewIssueShow) {
       return (
-        <View style={styles.formSection}>
-        <FlatList
+        <View style={styles.formSectionlistWidth}>
+        <FlatList nestedScrollEnabled
           data={this.state.collectionListView}
-          renderItem={({item}) => (
-            <View style={styles.listviewDesign}> 
+          renderItem={({item , index}) => (
+            <View style={{backgroundColor: index % 2 == 0  ? "#d3d3d390" : "#FFFFFF",borderRadius:10,
+            padding:5, }}> 
                 <View style={styles.listviewRow}>
-                    <View>
-                      <Text style={styles.ddcolor}>Money Receipt No</Text>
+                    <View style={styles.width28}>
+                      <Text style={styles.ddcolor}> Receipt No  </Text>
                       <Text style={styles.btnwidth}>{item.moneyReceiptNumber}</Text>
                     </View>
-                    <View>
-                      <Text style={styles.ddcolor}>Collection Amount</Text>
+                    <View style={styles.width28}>
+                      <Text style={styles.ddcolor}>  Amount  </Text>
                       <Text style={styles.btnwidth}>{item.amount}</Text>
+                    </View>
+                    <View style={styles.width28}>
+                      <Text style={styles.ddcolor}>  Date</Text>
+                      <Text style={styles.btnwidthforList}>{item.collectionDate}</Text>
                     </View>
                     
                 </View>
-                <View style={styles.listviewRow}>
+               {/* <View style={styles.listviewRow}>
                     <View style={styles.listviewRow}>
                       <Text style={styles.ddcolor}>Collection Date :    </Text>
                       <Text style={styles.ddcolor}>{            item.collectionDate}</Text>
                     </View>
                 </View>
-                
-                <View style={styles.listviewRow}>
+          */}
+               { /*<View style={styles.listviewRow}>
                    <View style={styles.listviewRow}>
                       <Text style={styles.ddcolor}>Entry Time    :    </Text>
                       <Text style={styles.ddcolor}>{item.creationTime}</Text>
                     </View>
                 </View>
-                
+          */} 
             </View>
 
           )}
@@ -1168,16 +1319,55 @@ async midLevel302DropDown(){
       return(
         <View style={styles.dropDownSection} >
               <View style={styles.formSectioncol}>
-                    <Text style={styles.TextdecorBold}>Sales officer name</Text>
-                    <Text style={styles.TextdecorBoldColor}>{this.state.firstDropdownHandlerId}</Text>
-                    <Text style={styles.TextdecorBold}>Sales officer phone</Text>
-                    <Text style={styles.TextdecorBoldColor}>{this.state.salerPhone}</Text>
+                  <View style={styles.formSectionRow}>
+                      <Text style={styles.TextdecorBold}>Followups : </Text>
+                      <Text style={styles.TextdecorBoldColor}>{this.state.followUps}</Text>
+                   </View>
+                   <View style={styles.formSectionRow}>
+                      <Text style={styles.TextdecorBold}>Done : </Text>
+                      <Text style={styles.TextdecorBoldColor}>{this.state.done}</Text>
+                    </View>
+                    <View style={styles.formSectionRow}>
+                      <Text style={styles.TextdecorBold}>TGT : </Text>
+                      <Text style={styles.TextdecorBoldColor}>{this.state.TGT}</Text>
+                    </View>
+                    <View style={styles.formSectionRow}>
+                      <Text style={styles.TextdecorBold}>ACH : </Text>
+                      <Text style={styles.TextdecorBoldColor}>{this.state.ACH}</Text>
+                    </View>
               </View>
               <View style={styles.colpadforshow}>
-                    <Text style={styles.TextdecorBold}>Customer name</Text>
-                    <Text style={styles.TextdecorBoldColor}>{this.state.customerName}</Text>
-                    <Text style={styles.TextdecorBold}>Customer phone</Text>
-                    <Text style={styles.TextdecorBoldColor}>{this.state.twoDropdownCustomerNumber}</Text>
+
+                   <View style={styles.rowpadforshow}>
+                      <Icon 
+                          name='briefcase-outline'
+                          size={30}
+                          color='#4b0082'
+                    
+                          />
+                      <Text style={styles.TextdecorBoldColorWicon}>{this.state.customerShop}</Text>
+                  </View>
+
+                  <View style={styles.rowpadforshow}>
+                    <Icon 
+                      name='person-circle'
+                      size={30}
+                      color='#4b0082'
+                
+                      />
+                      <Text style={styles.TextdecorBoldColorWicon}>{this.state.customerName}</Text>
+                      
+                  </View>
+                  <View style={styles.rowpadforshow}>
+                      <Icon 
+                          name='call'
+                          size={30}
+                          color='#4b0082'
+                    
+                          />
+                      <Text style={styles.TextdecorBoldColorWicon}>{this.state.twoDropdownCustomerNumber}</Text>
+                  </View>
+
               </View>
          </View>
 
@@ -1221,6 +1411,10 @@ const styles = StyleSheet.create({
 
     },
 
+    width28:{
+      width: '30%'
+    },
+
     button1: {
       flex: 1,   
       
@@ -1249,12 +1443,13 @@ const styles = StyleSheet.create({
 
     
     flexDirection: 'row',
-    padding:5
+    padding: 5,
+    
     
 },
     dropDown:{
 
-      width: 198,
+      width: '50%',
       height: 60
     },
 
@@ -1263,6 +1458,11 @@ const styles = StyleSheet.create({
       flexDirection: 'row',
      
     
+},
+formSectionOnlySave:{
+  padding:5,
+  flexDirection: 'row',
+
 },
 
 formSectioncol:{
@@ -1275,20 +1475,46 @@ formSectioncol:{
   width:{
     padding:5,
     marginRight:10,
-    width:140
+    width:'49%'
+  },
+
+  widthCollection:{
+    padding:5,
+    //marginRight:10,
+    width:'45%'
+  },
+  widthFollowUpDate:{
+    //padding:1,
+    marginRight:15,
+    width:'35%',
+    marginTop: 5
   },
 
   widthinput:{
     padding:5,
-    marginRight:10,
+    //marginRight:10,
     marginTop:10,
-    width:170
+    width:'31%',
+    
+    
   },
 
   btnwidth:{
     padding:10,
     marginRight:-10,
-    width:160
+    width: '100%'
+  },
+
+  btnwidthforList:{
+    paddingTop:10,
+   // marginRight:,
+    width:'100%'
+  },
+
+  btnwidthCollect:{
+    marginVertical: -20,
+    marginRight:-10,
+    width:120
   },
 
   centerbold:{
@@ -1300,10 +1526,12 @@ formSectioncol:{
   },
 
   backgroundformP1:{
-      width: 382,
+      width: '101%',
+      //height:50,
+      
       borderRadius: 10,
 
-      padding: 15,
+      //padding: 15,
       marginVertical:1,
       backgroundColor: "#00800068"
       
@@ -1311,23 +1539,27 @@ formSectioncol:{
   },
 
   backgroundformP2:{
-    width: 382,
+    width: '106.5%',
+    
     borderRadius: 10,
 
-    padding: 15,
-    marginVertical:1,
+    //padding: 15,
+    marginVertical:10,
     backgroundColor: "#ff000070"
     
 
 },
 
-ddcolor:{
-    
-    fontSize: 18,
+ddcolor:{ 
+    fontSize: 20,
     fontWeight: 'bold',
-    
-    
 },
+
+ddcolorList:{ 
+  fontSize: 18,
+  fontWeight: 'bold',
+},
+
 listviewRow:{
   flexDirection: 'row'
 },
@@ -1359,17 +1591,24 @@ listSection:{
 },
 widthinputCollection:{
   marginTop:15,
-  width:150
+  width:'46%',
 },
 
 widthinputCollectionExtraLarge:{
   marginTop:15,
-  width:180
+  width:'26.5%'
+},
+
+widthinputCollectionExtraLarge2:{
+  marginTop:15,
+  marginLeft:34,
+  width:'26.5%'
 },
 
 TextdecorBold:{
   paddingLeft:8,
-  fontSize: 15,
+  paddingVertical:2,
+  fontSize: 16,
   fontWeight: 'bold',
   
   
@@ -1377,6 +1616,15 @@ TextdecorBold:{
 
 TextdecorBoldColor:{
   paddingLeft:8,
+  
+  fontSize: 18,
+  color : 'black'
+  
+},
+
+TextdecorBoldColorWicon:{
+  paddingLeft:8,
+  marginVertical:5,
   fontSize: 16,
   color : 'black'
   
@@ -1387,6 +1635,66 @@ colpadforshow:{
   flexDirection: 'column',
   paddingLeft: 50
 },
+rowpadforshow:{
+        
+  flexDirection: 'row',
+  //paddingLeft: 50
+},
+
+formSectionlist:{
+  padding:5,
+  flexDirection: 'row',
+  height: 150,
+  
+ 
+
+},
+formSectionlistWidth:{
+  marginTop: -5,
+  padding:5,
+  flexDirection: 'row',
+  height: 165,
+  width : '100%'
+},
+
+formSectionlistWidthIssue:{
+  marginTop: -20,
+  flexDirection: 'row',
+  height: 155,
+  width : '100%'
+},
+
+formSectionRow:{
+
+  flexDirection: 'row',
+},
+btnwidthSave:{
+    //padding: -20,
+    marginVertical: 3,
+  
+    marginRight:-10,
+    width:120
+},
+backgroundformP2Collect:{
+    width: '103%',
+    
+    borderRadius: 10,
+
+    //padding: 15,
+    marginVertical: -10,
+    backgroundColor: "#ff000070",
+    marginRight: 2
+},
+
+backgroundformP1Collect:{
+  width: '103%',
+  
+  borderRadius: 10,
+
+  //padding: 15,
+  marginVertical: 20,
+  backgroundColor: "#00800068"
+}
 
 });
 

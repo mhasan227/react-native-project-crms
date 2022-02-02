@@ -7,7 +7,10 @@
     "ios": "react-native run-ios",
     "start": "react-native start",
     "test": "jest",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    
+    "build": "react-native bundle --platform android --verbose --dev false --entry-file index.js --bundle-output android/app/src/main/assets/index.android.bundle --assets-dest android/app/src/main/res"
+    
   },
   "dependencies": {
     "@react-native-community/datetimepicker": "^5.1.0",

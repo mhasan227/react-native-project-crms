@@ -1,9 +1,10 @@
 import React from 'react' ;
-import { View, Text , StyleSheet, Pressable,StatusBar,TouchableOpacity,DrawerLayoutAndroid, Alert} from 'react-native' ;
+import { View, Text , StyleSheet, Pressable,StatusBar,TouchableOpacity,DrawerLayoutAndroid, Alert,BackHandler} from 'react-native' ;
 import ToolbarAndroid from '@react-native-community/toolbar-android';
 import {useNavigation} from '@react-navigation/native'
 import VersionText from '../../components/VersionText';
 import Icon from 'react-native-vector-icons/Ionicons';
+import Logo from '../../../assets/images/ic_launcher.png';
 
 
 const navIcon = Icon.getImageSourceSync('md-menu', 24, 'black');
@@ -35,9 +36,13 @@ class InformationScreen extends React.Component {
         if (position === 0) {
           Alert.alert('Warning', 'You pressed settings')
         } else if (position === 1) {
-            this.props.navigation.navigate('SignInScreen');
+            this.props.navigation.reset({
+                index: 0,
+                routes: [{ name: 'SignInScreen' }],
+              });
         }
     }
+    
 
     render() {
         
@@ -71,16 +76,16 @@ class InformationScreen extends React.Component {
                 <View>
                     
                     <StatusBar backgroundColor="#0a254b" barStyle="light-content"/>
-                    <ToolbarAndroid style={styles.toolbar} title="Maxis Cr.MS" titleColor="white"
+                    <ToolbarAndroid style={styles.toolbar} title="  Grip" titleColor="white" logo={Logo}
                     //logo={require('../../../assets/images/maxislogo.png')}
                     navIcon={navIcon}
                     actions={[
                         { title: 'Settings', iconName: 'md-help', iconSize: 30, show: 'never' },
                         { title: 'Logout', iconName: 'md-help', iconSize:30, show: 'never' },
                     ]}
-                    overflowIconName="md-more" onIconClicked={this.openDrawer} onActionSelected={this.onToolbarIconClick}
+                    overflowIconName="md-more" onActionSelected={this.onToolbarIconClick}
                     />
-                    <Text>Information my app page 3</Text>
+                    
                     <Text>Hello your username {this.state.mydatauser}</Text>
                     <Text>Hello your Phone {this.state.userPhone}</Text>
                     <Text>Hello your tanentId : {this.state.tanentId}</Text>
@@ -92,7 +97,7 @@ class InformationScreen extends React.Component {
 }
 const styles = StyleSheet.create({
     toolbar: {
-        backgroundColor: '#3498db',
+        backgroundColor: '#800080',
         height: 56
     },
     drawer: {

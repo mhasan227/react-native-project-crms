@@ -21,6 +21,7 @@ const styles = StyleSheet.create({
       backgroundColor: 'white',
       marginRight : 200,
       marginTop: 195,
+      width: '19%'
      
       
     },
@@ -28,7 +29,9 @@ const styles = StyleSheet.create({
     text:{
         textShadowColor: 'black',
         textDecorationColor: 'black',
-        fontWeight: 'bold'
+        fontWeight: 'bold',
+        //width: '25%'
+        
        
     }
     
