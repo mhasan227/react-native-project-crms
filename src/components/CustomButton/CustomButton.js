@@ -19,7 +19,7 @@ class CustomButton extends React.Component {
 
 const styles = StyleSheet.create({
     container: {
-      backgroundColor: '#0a254b',
+      backgroundColor: '#4b0082',
       width: '100%',
       
       

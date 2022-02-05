@@ -21,8 +21,8 @@ class InformationScreen extends React.Component {
             mydata : data1.result.result.result,
             mydatauser : data1.result.result.userId,
             tanentId : data1.result.result.tanentId,
-            userPhone: data1.result.result.userPhone
-
+            userPhone: data1.result.result.userPhone,
+            //backBtnDisable: true
         }
     
     
@@ -42,7 +42,28 @@ class InformationScreen extends React.Component {
               });
         }
     }
-    
+
+    handleBackPress = () => {
+
+        if(this.state.backBtnDisable)
+        {
+          return true;
+        } 
+        else
+        {
+          return false
+        }
+      }
+
+    componentDidMount() {
+
+        BackHandler.addEventListener('hardwareBackPress', () => this.props.navigation.goBack());
+    }
+
+    componentWillUnMount()
+    {
+        BackHandler.addEventListener('hardwareBackPress', () => this.props.navigation.goBack());
+    }
 
     render() {
         

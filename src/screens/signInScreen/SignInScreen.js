@@ -8,7 +8,7 @@ import CustomInput from '../../components/CustomInput';
 import CustomButton from '../../components/CustomButton';
 import VersionText from '../../components/VersionText';
 import {useNavigation} from '@react-navigation/native'
-
+import { ScaledSheet } from 'react-native-size-matters';
 //
 
 
@@ -87,7 +87,7 @@ class SignInScreen extends React.Component {
             //console.warn(result.result.userId);
             //console.warn(result.result.message);
             if(result.result.result=== 'SUCCESS'){
-                this.props.navigation.replace('HomeScreen',{result});
+                this.props.navigation.navigate('HomeScreen',{result});
             }
             this.setInputValue( "responseMessage", result.result.message );
             //this.state.test = result.result.message;
@@ -134,20 +134,20 @@ class SignInScreen extends React.Component {
 }
 
 
-const styles = StyleSheet.create({
+const styles = ScaledSheet.create({
     logo: {
       width:'99%',
       height:280,
-      padding:60
+      padding: '60@s'
     },
 
     custom:{
-        padding:70
+        padding: '70@s'
     },
     root:{
 
         alignItems: 'center',
-        padding:60
+        padding: '60@s'
         
     }
     

@@ -10,6 +10,7 @@ class CustomInputS extends React.Component {
            <TextInput placeholder={this.props.placeholder} 
                       value={this.props.value}
                       onChangeText={this.props.setvalue}
+                      placeholderTextColor = "black"
                      
                       secureTextEntry={this.props.secureTextEntry}
                       style={styles.input}/>

@@ -8,7 +8,7 @@ class VersionText extends React.Component {
     render() {
         return (
         <View style={styles.container}>
-           <Text style={styles.text}>V.1.0.0</Text>
+           <Text style={styles.text}>V.1.5.0</Text>
             
         </View>
        )

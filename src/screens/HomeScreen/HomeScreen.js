@@ -4,6 +4,7 @@ import ToolbarAndroid from '@react-native-community/toolbar-android';
 import {useNavigation} from '@react-navigation/native'
 import VersionText from '../../components/VersionText';
 import Icon from 'react-native-vector-icons/Ionicons';
+import Icon2 from 'react-native-vector-icons/MaterialCommunityIcons';
 import DropDownPicker from 'react-native-dropdown-picker';
 import SearchableDropdown from 'react-native-searchable-dropdown';
 import {Picker} from '@react-native-picker/picker';
@@ -13,18 +14,22 @@ import CustomInputS from '../../components/CustomInputS';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import DatePicker from 'react-native-datepicker';
 import Logo from '../../../assets/images/ic_launcher.png';
+import { ScaledSheet } from 'react-native-size-matters';
 
 
 
 let colorchange= true;
 let c=0;
+var today = new Date(),
+
+    date = today.getFullYear() + '-' +'0' + (today.getMonth() + 1) + '-' + today.getDate();
 const navIcon = Icon.getImageSourceSync('md-menu', 24, 'black');
 class HomeScreen extends React.Component {
     constructor(props) {
         super(props);
         console.log(this.props);
         const data = this.props.route.params;
-       
+        
        // let data = this.props.params;
         this.openDrawer = this.openDrawer.bind(this);
         this.onToolbarIconClick = this.onToolbarIconClick.bind(this);
@@ -34,6 +39,7 @@ class HomeScreen extends React.Component {
         this.setInputValue = this.setInputValue.bind(this);
         this.issueBtnClick = this.issueBtnClick.bind(this);
         this.collectionBtnClick= this.collectionBtnClick.bind(this);
+        this.handleBackPress=this.handleBackPress.bind(this);
         this.state = {
             userinfo: data,
             mydata : data.result.result.result,
@@ -56,6 +62,7 @@ class HomeScreen extends React.Component {
             flag : 0,
             onClickedIssue: false,
             onClickedCollection: false,
+            onClickedfollowUp: false,
 
             invoiceNumber: '',
             creditAmount: '',
@@ -70,6 +77,7 @@ class HomeScreen extends React.Component {
 
             formsectionissue: false,
             formsectioncollection: false,
+            formsectionFollowUp: false,
             mReceiptNumber : '',
             collectionAmount: '',
             collectionDate : '',
@@ -79,6 +87,7 @@ class HomeScreen extends React.Component {
             listViewIssueShow: false,
             collectionViewIssueShow: false,
             salerCustomerShow: false,
+            listViewFollowUpShow: false,
 
             salerPhone:'',
             customerName: '',
@@ -90,8 +99,13 @@ class HomeScreen extends React.Component {
             followUps: '',
             TGT:'',
             ACH:'',
-            
+            active: 0,
+            Due: '', 
 
+            followUpList:[],
+            timePassed: false,
+            currentDate: date,
+            backBtnDisable: true,
             
         }
     
@@ -102,12 +116,29 @@ class HomeScreen extends React.Component {
       this.setState({
         onClickedIssue: true
      });
+     this.setState({ active: 0 })
      this.setState({ formsectionissue: true });
      this.setState({ formsectioncollection: false });
      this.setState({ listViewIssueShow: true });
-     
+     this.setState({ formsectionFollowUp: false });
+     this.setState({ listViewFollowUpShow: false});
      this.setState({ collectionViewIssueShow: false });  // issu button press then no collection list show
      this.issueListViewApi();
+    }
+
+    followUpBtnClick(){
+      this.setState({
+        onClickedfollowUp: true
+     });
+     this.setState({ active: 1 })
+     this.setState({ formsectionFollowUp: true });
+     this.setState({ formsectionissue: false });
+     this.setState({ formsectioncollection: false });
+     this.setState({ listViewIssueShow: false });
+     this.setState({ listViewFollowUpShow: true});
+     this.setState({ collectionViewIssueShow: false });  // issu button press then no collection list show
+     //this.issueListViewApi();
+     this.followUpListViewApi();
     }
 
     collectionBtnClick(){
@@ -115,18 +146,20 @@ class HomeScreen extends React.Component {
       this.setState({
         onClickedCollection: true
      });
-
+     this.setState({ active: 2 })
+     this.setState({ formsectionFollowUp: false });
      this.setState({ formsectionissue: false });
      this.setState({ formsectioncollection: true });
      this.setState({ listViewIssueShow: false });
      this.setState({ collectionViewIssueShow: true });
+     this.setState({ listViewFollowUpShow: false});
 
      this.collectionListViewApi();
      
     }
     handleDropDown1Change(selectedVariantValue) {
         this.setState({ items: selectedVariantValue });
-       // alert(selectedVariantValue);
+        //alert(selectedVariantValue);
         this.setState({firstDropdownHandlerId: selectedVariantValue});
         let demoArray=[];
         for( let i=0;i<this.state.finalArray.length;i++){
@@ -196,6 +229,10 @@ class HomeScreen extends React.Component {
         this.dashBoardInfo();
         this.issueListViewApi();
         this.collectionListViewApi();
+        this.dashBoardInfoTotalDue(selectedVariantValue);
+        this.setState({ currentDate: date });
+        this.followUpListViewApi1stCall(date);
+        
         
       }
 
@@ -247,16 +284,34 @@ class HomeScreen extends React.Component {
     }
 
     
+  handleBackPress = () => {
+
+  if(this.state.backBtnDisable)
+  {
+    return true;
+  } 
+  else
+  {
+    return false
+  }
+}
+    
     componentDidMount() {
      
       this.customer303DropDown();
       //this.midLevel302DropDown();
       this.salesOfficerDropDown();
-
+      
+      BackHandler.addEventListener('hardwareBackPress', this.handleBackPress);
       //this.issueListViewApi();
       LogBox.ignoreLogs(['VirtualizedLists should never be nested']);
       LogBox.ignoreLogs(['Animated: `useNativeDriver`','componentWillReceiveProps']); // using for off error and warning message;
      }
+
+     componentWillUnMount()
+    {
+        BackHandler.addEventListener('hardwareBackPress', this.handleBackPress);
+    }
 
      async dashBoardInfo(){
          let userName=this.state.firstDropdownHandlerId;
@@ -373,6 +428,100 @@ class HomeScreen extends React.Component {
 
      }
 
+     async followUpListViewApi1stCall(dateToday){
+
+      let date= dateToday.replace(/-/g,'');
+      //alert(this.state.currentDate);
+       
+      //alert(date);
+
+      const gwUrl = 'http://maxisservice-api-gateway-maxis.nagadpay.com/';
+
+      try {
+          let res = await fetch(gwUrl + 'maxisservice-service/endpoint/followup/get-bh-so-date-range', {
+              method: "POST",
+              headers: {
+                  'Content-Type': 'application/json',
+                  token: "Bearer " + this.state.token,
+                  userid: this.state.mydatauser
+              },
+              body: JSON.stringify({
+
+                businessHouseId: this.state.tenantId,
+                saleOfficerId: this.state.firstDropdownHandlerId,
+                followUpDateLongFrom: date,
+                followUpDateLongTo: date
+              })
+          });
+
+          let result = await res.json();  
+          //alert(result[0].status);
+          let array=[];
+          let checkIdfromDropDown=this.state.twoDropdownCustomerNumber;
+          
+          for (let i = 0; i < result.length; i++) {
+                
+
+                    array.push(result[i]);
+
+                
+          }
+          this.setInputValue("followUpList",array);
+          
+ 
+      }catch (e) {
+          
+      }
+
+     }
+
+     async followUpListViewApi(d){
+
+      //let date= "2022-01-13".replace(/-/g,'');
+       
+      //alert(date);
+
+      const gwUrl = 'http://maxisservice-api-gateway-maxis.nagadpay.com/';
+
+      try {
+          let res = await fetch(gwUrl + 'maxisservice-service/endpoint/followup/get-bh-so-date-range', {
+              method: "POST",
+              headers: {
+                  'Content-Type': 'application/json',
+                  token: "Bearer " + this.state.token,
+                  userid: this.state.mydatauser
+              },
+              body: JSON.stringify({
+
+                businessHouseId: this.state.tenantId,
+                saleOfficerId: this.state.firstDropdownHandlerId,
+                followUpDateLongFrom:  d.replace(/-/g,''),
+                followUpDateLongTo: d.replace(/-/g,'')
+              })
+          });
+
+          let result = await res.json();  
+          //alert(result[2].customerCredit.name);
+          //alert(result.status);
+          let array=[];
+          let checkIdfromDropDown=this.state.twoDropdownCustomerNumber;
+          
+          for (let i = 0; i < result.length; i++) {
+                
+
+                    array.push(result[i]);
+
+                
+          }
+          this.setInputValue("followUpList",array);
+          
+ 
+      }catch (e) {
+          
+      }
+
+     }
+
      async saveCollectionForm(){
 
       /*this.setState({
@@ -439,6 +588,72 @@ class HomeScreen extends React.Component {
       this.setInputValue("followDate",'');
       this.setInputValue("followAMT",'');
      }
+
+     async saveFollowUpForm(){
+
+      /*this.setState({
+        onClickedIssue: true
+     });
+     this.setState({ formsectionissue: true });
+     this.setState({ formsectioncollection: false });*/
+      
+
+      let handlerId= this.state.firstDropdownHandlerId;
+      let receipt = "";
+      let tenantId = this.state.tenantId;
+      let userId   =this.state.mydatauser;
+      let customer =this.state.twoDropdownCustomerNumber;
+      let mReceiptNumber= this.state.mReceiptNumber;
+      let collectionDate  = this.state.collectionDate;
+      let collectionAmount= this.state.collectionAmount;
+      let followDate= this.state.followDate;
+      let followAMT= this.state.followAMT;
+     
+      //alert(followAMT);
+
+      const gwUrl = 'http://maxisservice-api-gateway-maxis.nagadpay.com/';
+
+      try {
+          let res = await fetch(gwUrl + 'maxisservice-service/endpoint/followup/save', {
+              method: "POST",
+              headers: {
+                  'Content-Type': 'application/json',
+                  token: "Bearer " + this.state.token,
+                  userid: userId
+              },
+              body: JSON.stringify({
+
+                businessHouseId: tenantId,
+
+                //userId: userId,
+                //receipt: receipt,
+                //moneyReceiptNumber: mReceiptNumber,
+                //collectionDate : collectionDate,
+               // businessHouseId  :  handlerId,
+                saleOfficerId : handlerId,
+                customerCreditId  : customer,
+                //amount  : collectionAmount,
+                followUpDateString: followDate,
+                followUpAmount: followAMT
+
+              })
+          });
+
+          let result = await res.json();         
+          this.setInputValue("collectionResponse",result.status);
+          //alert(result.status);
+ 
+      }catch (e) {
+          
+      }
+      
+      this.setInputValue("mReceiptNumber",'');
+      this.setInputValue("collectionDate",'');
+      this.setInputValue("collectionAmount",'');
+      this.setInputValue("followDate",'');
+      this.setInputValue("followAMT",'');
+     }
+
 
     async saveIssueForm(){
 
@@ -536,7 +751,7 @@ class HomeScreen extends React.Component {
       }
   }
 
-  async customer303DropDown(){
+    async customer303DropDown(){
 
     const gwUrl = 'http://onboard-apigw-maxis.nagadpay.com/';
 
@@ -580,9 +795,9 @@ class HomeScreen extends React.Component {
     }
 
     this.midLevel302DropDown();
-}
+  }
 
-async midLevel302DropDown(){
+    async midLevel302DropDown(){
 
   const gwUrl = 'http://maxisservice-api-gateway-maxis.nagadpay.com/';
 
@@ -637,9 +852,39 @@ async midLevel302DropDown(){
   }catch (e) {
       
   }
+  }
+
+  async dashBoardInfoTotalDue(selectedVariantValue){
+    let userName=this.state.firstDropdownHandlerId;
+    let userPhone=this.state.twoDropdownCustomerNumber;
+ const gwUrl = 'http://maxisservice-api-gateway-maxis.nagadpay.com/';
+
+ try {
+     let res = await fetch(gwUrl + 'maxisservice-service/endpoint/entity-settings/get', {
+         method: "POST",
+         headers: {
+             'Content-Type': 'application/json',
+             token: "Bearer " + this.state.token,
+             userid: this.state.mydatauser
+         },
+         body: JSON.stringify({
+
+           //userId: userName,
+           tanentId: selectedVariantValue
+         })
+     });
+
+     let result = await res.json();  
+     
+     
+     
+     this.setInputValue("Due",result[0].ledgerSummary);
+     
+ }catch (e) {
+     
+ }
+
 }
-
-
  /* componentDidUpdate(prevProps, prevState) {
     if (prevState.finalArray !== this.state.finalArray) {
       // this.getAllUnitOfMeasure();
@@ -724,7 +969,7 @@ async midLevel302DropDown(){
                   </Picker>
              </View>
 
-             <View style={styles.dropDownSection} >
+             <View style={styles.dashboardSection} >
                  {this.salerCustomerRender()}
              </View>
             
@@ -734,6 +979,10 @@ async midLevel302DropDown(){
 
              <View style={styles.formSection}>
                 {this.formSectionIssue()}  
+             </View>
+
+             <View style={styles.formSection}>
+                {this.formsectionFollow()}  
              </View>
 
              <View style={styles.formSection}>
@@ -749,6 +998,12 @@ async midLevel302DropDown(){
              <View style={styles.formSection}>
                
                 {this.listViewCollectionRender()}
+                
+             </View>
+
+             <View style={styles.formSection}>
+               
+                {this.listViewFollowUpRender()}
                 
              </View>
              </ScrollView>
@@ -773,29 +1028,34 @@ async midLevel302DropDown(){
                         </View>
                         <View style={styles.formSectioncol}>
                               <View>
-                                    <Text>              {/*Invoice Date*/}                       </Text>
+                                    <Text>             {/*Invoice Date*/}                       </Text>
                               </View>
 
                               <View style={styles.width}> 
                                   <DatePicker
                                       style={{width: '310%',
-                                              marginLeft:-42,
+                                              marginLeft:-41.5,
                                               
                                              }}
                                       date={this.state.invoiceDate}
                                       mode="date"
-                                      placeholder="Invoice date"
-                                      format="YYYY-MM-DD"
+                                      placeholder=" Date"
+                                      format="   YYYY-MM-DD"
                                       minDate="2016-05-01"
                                       maxDate="2025-06-01"
                                       confirmBtnText="Confirm"
                                       cancelBtnText="Cancel"
+                                      
                                       customStyles={{
+                                        placeholderText: {
+                                          color: 'black'
+                                        },
                                         dateIcon: {
                                           position: 'absolute',
                                           left: 0,
                                           top: 4,
-                                          marginLeft: 36
+                                          marginLeft: 36,
+                                          
                                         },
                                         dateInput: {
                                           marginBottom: -2,
@@ -804,6 +1064,7 @@ async midLevel302DropDown(){
                                           borderColor: 'black',
                                           backgroundColor:'white',
                                           borderRadius:5,
+                                          
                                         }
                                         // ... You can check the source to find the other keys.
                                       }}
@@ -820,7 +1081,7 @@ async midLevel302DropDown(){
                             </View>
                          
                     </View>
-                </View>
+                 </View>
 
         {/*<View style={styles.backgroundformP2}>
             <View style={styles.formSection}>
@@ -897,36 +1158,38 @@ async midLevel302DropDown(){
 
       if(this.state.formsectioncollection){
             return(
-          <View> 
-                <View style={styles.backgroundformP2Collect}>  
+                <View>
+                <View style={styles.backgroundformP11}>
                     <View style={styles.formSection}>
-                       
-                          <View style={styles.widthinputCollection}> 
-                          <CustomInputS placeholder="Collection amount"
-                                setvalue={(text) => this.setState({ collectionAmount: text})}
-                                value={this.state.collectionAmount}
-                            />
-                          </View>
-                    
-
-
-
-                          <View style={styles.formSectioncol}>
+                      
+                      <View style={styles.widthinput}> 
+                                
+                                <CustomInputS placeholder="C.AMT"
+                                  setvalue={(text) => this.setState({ collectionAmount: text})}
+                                  value={this.state.collectionAmount}
+                              />
+                        </View>
+                        <View style={styles.formSectioncol}>
                               <View>
-                                <Text>                                          {/*Collection Date*/}</Text>
+                                    <Text>             {/*Invoice Date*/}                       </Text>
                               </View>
-                              <View style={styles.widthCollection}> 
-                                    <DatePicker
-                                        style={{width: '355%',marginLeft:-24}}
+
+                              <View style={styles.width}>
+
+                                        <DatePicker
+                                        style={{width: '310%',marginLeft:-41.5}}
                                         date={this.state.collectionDate}
                                         mode="date"
-                                        placeholder="Collection date"
+                                        placeholder="C.Date"
                                         format="YYYY-MM-DD"
                                         minDate="2016-05-01"
                                         maxDate="2025-06-01"
                                         confirmBtnText="Confirm"
                                         cancelBtnText="Cancel"
                                         customStyles={{
+                                          placeholderText: {
+                                            color: 'black'
+                                          },
                                           dateIcon: {
                                             position: 'absolute',
                                             left: 0,
@@ -945,82 +1208,36 @@ async midLevel302DropDown(){
                                         }}
                                         onDateChange={(date) => {this.setState({collectionDate: date})}}
                                         />
-                                </View>
-                          </View>
-                    </View>
-                </View>   
-                
-                <View style={styles.backgroundformP1Collect}>
-                    <View style={styles.formSection}>
-                        
-                    <View style={styles.widthinputCollectionExtraLarge}> 
-                              <CustomInputS placeholder="Receipt"
-                                    setvalue={(text) => this.setState({mReceiptNumber: text})}
-                                    value={this.state.mReceiptNumber}
-                                />
-                        </View>
-                        
-                        <View style={styles.formSectioncol}>
-                              <View>
-                                <Text>                                  {/*FollowUp Date*/}</Text>
                               </View>
-                              <View style={styles.widthFollowUpDate}> 
-                                    <DatePicker
-                                        style={{width: '400%',marginLeft:-25}}
-                                        date={this.state.followDate}
-                                        mode="date"
-                                        placeholder="FuDT"
-                                        format="YYYY-MM-DD"
-                                        minDate="2016-05-01"
-                                        maxDate="2025-06-01"
-                                        confirmBtnText="Confirm"
-                                        cancelBtnText="Cancel"
-                                        customStyles={{
-                                          dateIcon: {
-                                            position: 'absolute',
-                                            left: 0,
-                                            top: 4,
-                                            marginLeft: 36
-                                          },
-                                          dateInput: {
-                                            height: '125%',
-                                            marginBottom: -2,
-                                            borderRadius:5,
-                                            marginLeft: 36,
-                                            borderColor: 'black',
-                                            backgroundColor: 'white'
-                                          }
-                                          // ... You can check the source to find the other keys.
-                                        }}
-                                        onDateChange={(date) => {this.setState({followDate: date})}}
-                                        />
-                                </View>
-                          </View>
-
-                          <View style={styles.widthinputCollectionExtraLarge2}> 
-                              <CustomInputS placeholder="Fu.AMT"
-                                    setvalue={(text) => this.setState({followAMT: text})}
-                                    value={this.state.followAMT}
-                                />
                         </View>
+                
+                            <View style={styles.widthinput}> 
+                              <CustomInputS placeholder="Receipt"
+                                      setvalue={(text) => this.setState({mReceiptNumber: text})}
+                                      value={this.state.mReceiptNumber}
+                                  />
+                            </View>
                          
                     </View>
-                </View>
+                 </View>
+
+        <View style={styles.formSectionOnlySave}>
+            <View style={styles.btnwidthSaveC}>
+                 
+              <CustomButton  text="Save" 
+                            
+                          onPress={() => this.saveCollectionForm()}/>
+
+            </View>
+
+            <View style={styles.width}>
+                 
+           {/*<Text>{this.state.issuResponse}</Text>*/}
+
+            </View>
+        </View>
                 
-                  <View style={styles.formSection}>
-                      <View style={styles.btnwidthCollect}>
-                          
-                      <CustomButton  text="Save"
-                                  onPress={() => this.saveCollectionForm()}/>
-
-                      </View>
-
-                      <View style={styles.width}>
-                          
-                          {/*<Text>{this.state.collectionResponse}</Text>*/}
-
-                      </View>
-                  </View>
+                  
             </View> )
       }else{
 
@@ -1028,167 +1245,166 @@ async midLevel302DropDown(){
 
   }
 
+    formsectionFollow(){
+          if(this.state.formsectionFollowUp){
+            //setTimeout(() => {this.setState({timePassed: true})}, 2000);
+            return(
+        <View>
+            <View style={styles.backgroundformP1Collect}>
+            <View style={styles.formSection}>
+                
+                    <View style={styles.widthCollection}> 
+                      
+                        <CustomInputS placeholder="AMT"
+                        setvalue={(text) => this.setState({followAMT: text})}
+                        value={this.state.followAMT}
+                        />
+                    </View>
+                <View style={styles.formSectioncol}>
+                      <View>
+                        <Text>                                          {/*FollowUp Date*/}</Text>
+                      </View>
+                      <View style={styles.widthCollection}> 
+                      <DatePicker
+                                style={{width: '310%',marginLeft:-29,marginVertical: -9}}
+                                date={this.state.followDate}
+                                mode="date"
+                                placeholder="Date"
+                                format="YYYY-MM-DD"
+                                minDate="2016-05-01"
+                                maxDate="2025-06-01"
+                                confirmBtnText="Confirm"
+                                cancelBtnText="Cancel"
+                                customStyles={{
+                                  placeholderText: {
+                                    color: 'black'
+                                  },
+                                  dateIcon: {
+                                    position: 'absolute',
+                                    left: 0,
+                                    top: 4,
+                                    marginLeft: 36
+                                  },
+                                  dateInput: {
+                                    height: '125%',
+                                    //width: '190%',
+                                    //marginBottom: -2,
+                                    borderRadius:5,
+                                    marginLeft: 36,
+                                    borderColor: 'black',
+                                    backgroundColor: 'white'
+                                  }
+                                  // ... You can check the source to find the other keys.
+                                }}
+                                onDateChange={(date) => {this.setState({followDate: date})}}
+                                />
+                            
+                        </View>
+                  </View>
+
+                
+                </View>
+            </View>
+                <View style={styles.formSectionOnlySave}>
+                      <View style={styles.btnwidthSaveF}>
+                          
+                      <CustomButton  text="Save"
+                                  onPress={() => this.saveFollowUpForm()}/>
+
+                      </View>
+
+                      <View style={styles.width}>
+                      {/*this.state.timePassed == true ? (<Text>INTERNET</Text>) : null}
+                          {<Text>{this.state.collectionResponse }</Text>*/}
+                          
+                      </View>
+                </View>
+              <View style={styles.borderFooter}></View>
+             <View>
+              <View style={styles.formSection}>
+                <View style={styles.padingLow}>
+                  <Text style={styles.ddcolor5}>Filter followup list</Text>
+                  
+                </View>
+
+                <View style={styles.designDateFilter}>
+                <DatePicker
+                                style={{width: '100%',marginLeft:-29,marginVertical: -9}}
+                                date={this.state.currentDate}
+                                mode="date"
+                                placeholder="Select date"
+                                format="YYYY-MM-DD"
+                                minDate="2016-05-01"
+                                maxDate="2025-06-01"
+                                confirmBtnText="Confirm"
+                                cancelBtnText="Cancel"
+                                customStyles={{
+                                  placeholderText: {
+                                    color: 'black'
+                                  },
+                                  dateIcon: {
+                                    position: 'absolute',
+                                    left: 0,
+                                    top: 4,
+                                    marginLeft: 36
+                                  },
+                                  dateInput: {
+                                    height: '125%',
+                                    //width: '190%',
+                                    //marginBottom: -2,
+                                    borderRadius:5,
+                                    marginLeft: 36,
+                                    borderColor: 'black',
+                                    backgroundColor: 'white'
+                                  }
+                                  // ... You can check the source to find the other keys.
+                                }}
+                                onDateChange={(date) => {this.setState({currentDate: date}),this.followUpListViewApi(date)}}
+                                />
+                </View>
+              </View>
+            </View> 
+    </View>)
+  }else{}
+
+
+
+}
+
     displayJsxMessage() {
-      var _style,_style1;
-      
-      if (this.state.onClickedIssue){ // clicked button style
-        _style = {
-         
-          flex: 1,
-        
-          height: 50,
-          backgroundColor: '#3cb371',
-          
-          marginLeft:10,
-          marginRight: 10,
-          borderRadius: 5,
-  
-          padding: 15,
-          marginVertical:5,
-         
-          }
-
-          _style1={ 
-            
-            flex: 1,   
-            
-            height: 50,
-            backgroundColor: '#a9a9a9',
-            marginLeft:10,
-            marginRight: 10,
-  
-            borderRadius: 5,
-  
-            padding: 15,
-            marginVertical:5
-            }
-
-            colorchange=true;
-
-          this.state.onClickedIssue=false;
-
-      } else if (this.state.onClickedCollection){ // clicked button style
-        _style1 = {
-          flex: 1,
-        
-          height: 50,
-        
-        
-          marginLeft:10,
-          marginRight: 10,
-          borderRadius: 5,
-
-          padding: 15,
-          marginVertical:5,
-          backgroundColor: '#3cb371',
-          
-          
-          }
-
-          _style={
-            flex: 1,
-            weight:50,
-            height: 50,
-            backgroundColor: '#a9a9a9',
-            
-            marginLeft:10,
-            marginRight: 10,
-            borderRadius: 5,
-            padding: 15,
-            marginVertical:5
-            
-    
-        }
-        colorchange=false;
-        this.state.onClickedCollection=false;
-        //alert(colorchange);
-      } 
-
-      else {
-        
-        if(colorchange===true){
-        _style={
-
-            flex: 1,
-          
-            height: 50,
-            backgroundColor: '#3cb371',
-            
-            marginLeft:10,
-            marginRight: 10,
-            borderRadius: 5,
-    
-            padding: 15,
-            marginVertical:5,
-        }
-        _style1={ 
-            
-          flex: 1,   
-          
-          height: 50,
-          backgroundColor: '#a9a9a9',
-          marginLeft:10,
-          marginRight: 10,
-
-          borderRadius: 5,
-
-          padding: 15,
-          marginVertical:5
-          }
-
-        } else{
-
-          _style={
-
-            flex: 1,
-          
-            height: 50,
-            backgroundColor: '#a9a9a9',
-            
-            marginLeft:10,
-            marginRight: 10,
-            borderRadius: 5,
-    
-            padding: 15,
-            marginVertical:5,
-        }
-        _style1={ 
-            
-          flex: 1,   
-          
-          height: 50,
-          backgroundColor: '#3cb371',
-          marginLeft:10,
-          marginRight: 10,
-
-          borderRadius: 5,
-
-          padding: 15,
-          marginVertical:5
-          }
-        }
-      }
-      
-
+      var _style,_style1,_style0;
       
 
         if (this.state.flag) {
             return (
             <View style={styles.buttonSection}>
-                <View style={_style}>
+                <View style={styles.paddingButton0}>
                     <Pressable 
                         onPress={() => this.issueBtnClick()}
+                        style={this.state.active === 0 ? styles.button : styles.button1}
                        >
                         <Text style={styles.centerbold}>Issue</Text>
                     </Pressable>
                 </View>
-                <View style={_style1}>
+
+                <View style={styles.paddingButton1}>
+                    <Pressable 
+                        onPress={() => this.followUpBtnClick()}
+                        style={this.state.active === 1 ? styles.button : styles.button1}
+                       >
+                        <Text style={styles.centerbold}>FollowUp</Text>
+                    </Pressable>
+                </View>
+
+                <View style={styles.paddingButton0}>
                   <Pressable 
                     onPress={() => this.collectionBtnClick()}
+                    style={this.state.active === 2 ? styles.button : styles.button1}
                     >
                     <Text style={styles.centerbold}>Collection</Text>
                   </Pressable>
                 </View>
+                
 
              </View>
                   )            
@@ -1313,34 +1529,130 @@ async midLevel302DropDown(){
   }else{}
   }
 
+  listViewFollowUpRender(){
+    if (this.state.listViewFollowUpShow) {
+
+        
+      return (
+        <View style={styles.formSectionlistWidthfollow}>
+         
+ 
+
+        <FlatList nestedScrollEnabled
+          data={this.state.followUpList}
+          renderItem={({item , index}) => (
+            <View style={{backgroundColor: index % 2 == 0  ? "#d3d3d390" : "#FFFFFF",borderRadius:10,
+            padding:5, }}> 
+                <View style={styles.listviewRow}>
+                    <View style={styles.width28}>
+                      
+                      <Text style={styles.ddcolor}>  Name</Text>
+                      <Text style={styles.btnwidth}>{item.customerCredit.name}</Text>
+                    </View>
+                    
+                    <View style={styles.width28}>
+                      <Text style={styles.ddcolor}>  Phone</Text>
+                      <Text style={styles.btnwidth}>{item.customerCredit.userId}</Text>
+                    </View>
+
+                    <View style={styles.width28}>
+                      <Text style={styles.ddcolor}>Amount</Text>
+                      <Text style={styles.btnwidthforList}>{item.followUpAmount}</Text>
+                    </View>
+                </View>
+               {/* <View style={styles.listviewRow}>
+                    <View style={styles.listviewRow}>
+                      <Text style={styles.ddcolor}>Invoice Date :    </Text>
+                      <Text style={styles.ddcolor}>{            item.invoiceDate}</Text>
+                    </View>
+                </View>
+          */}
+               {/* <View style={styles.listviewRow}>
+                   <View style={styles.listviewRow}>
+                      <Text style={styles.ddcolor}>  INV.DT  :    </Text>
+                      <Text style={styles.ddcolor}>{item.invoiceDate}</Text>
+                    </View>
+                </View>
+          */}
+               {/* <View style={styles.listviewRow}>
+                   <View style={styles.listviewRow}>
+                      <Text style={styles.ddcolor}>Entry Time    :    </Text>
+                      <Text style={styles.ddcolor}>{item.creationTime}</Text>
+                    </View>
+                </View>
+          */}
+            </View>
+
+          )}
+        
+        />
+        
+       
+     </View>
+        
+      )
+  }else{}
+}
+
   salerCustomerRender(){
 
     if(this.state.salerCustomerShow){
+      let due= -1* this.state.Due;
       return(
-        <View style={styles.dropDownSection} >
-              <View style={styles.formSectioncol}>
-                  <View style={styles.formSectionRow}>
-                      <Text style={styles.TextdecorBold}>Followups : </Text>
-                      <Text style={styles.TextdecorBoldColor}>{this.state.followUps}</Text>
-                   </View>
-                   <View style={styles.formSectionRow}>
-                      <Text style={styles.TextdecorBold}>Done : </Text>
-                      <Text style={styles.TextdecorBoldColor}>{this.state.done}</Text>
-                    </View>
-                    <View style={styles.formSectionRow}>
-                      <Text style={styles.TextdecorBold}>TGT : </Text>
-                      <Text style={styles.TextdecorBoldColor}>{this.state.TGT}</Text>
-                    </View>
-                    <View style={styles.formSectionRow}>
-                      <Text style={styles.TextdecorBold}>ACH : </Text>
-                      <Text style={styles.TextdecorBoldColor}>{this.state.ACH}</Text>
-                    </View>
+        <View style={styles.dashboardSection} >
+              <View style={styles.formSectioncolDash}>
+                 <View style={styles.flex1}>
+                     <View style={styles.paddingUp}>
+                        <Text style={styles.dashboard}>Dashboard</Text>
+                      <View style={styles.dashboardBorder}>
+                          <View style={styles.formSectionRow}>
+                              <Icon 
+                              name='walk'
+                              size={30}
+                              color='#4b0082'
+                        
+                              />
+                              <Text style={styles.TextdecorBoldColorWiconLeft}>{this.state.followUps}</Text>
+                          </View>
+                          <View style={styles.formSectionRow}>
+                              <Icon 
+                                  name='checkmark-done'
+                                  size={30}
+                                  color='#4b0082'
+                        
+                              />
+                              <Text style={styles.TextdecorBoldColorWiconLeft}>{this.state.done}</Text>
+                            </View>
+                            <View style={styles.formSectionRow}>
+                          
+                             <Icon 
+                                  name='trending-up'
+                                  size={30}
+                                  color='#4b0082'
+                        
+                              />
+                              <Text style={styles.TextdecorBoldColor}>{this.state.TGT}</Text>
+                            </View>
+                            <View style={styles.formSectionRow}>
+                             <Icon 
+                                  name='cash-outline'
+                                  size={30}
+                                  color='#4b0082'
+                        
+                              />
+                              <Text style={styles.TextdecorBoldColor}>{this.state.ACH}</Text>
+                            </View>
+                        </View>
+                      </View>
+                  </View>
               </View>
-              <View style={styles.colpadforshow}>
-
+            
+              
+              <View style={styles.dashboardBorder2}>
+                 
                    <View style={styles.rowpadforshow}>
                       <Icon 
-                          name='briefcase-outline'
+                          name='home'
                           size={30}
                           color='#4b0082'
                     
@@ -1368,9 +1680,19 @@ async midLevel302DropDown(){
                       <Text style={styles.TextdecorBoldColorWicon}>{this.state.twoDropdownCustomerNumber}</Text>
                   </View>
 
-              </View>
-         </View>
+                  <View style={styles.rowpadforshow}>
+                      <Icon2 
+                          name='cash-minus'
+                          size={30}
+                          color='#4b0082'
+                    
+                          />
+                      <Text style={styles.TextcolorRed}>{due}</Text>
+                  </View>
 
+              </View>
+         
+        </View>
       )
     }else{}
   
@@ -1380,7 +1702,7 @@ async midLevel302DropDown(){
 
 
 
-const styles = StyleSheet.create({
+const styles = ScaledSheet.create({
     toolbar: {
         backgroundColor: '#800080',
         height: 56
@@ -1397,9 +1719,9 @@ const styles = StyleSheet.create({
 
     button: {
         flex: 1,
-        
+        width: '100%',
         height: 50,
-        backgroundColor: '#00ff00',
+        backgroundColor: '#3cb371',
         
         marginLeft:10,
         marginRight: 10,
@@ -1414,10 +1736,13 @@ const styles = StyleSheet.create({
     width28:{
       width: '30%'
     },
+    row:{
+      //flexDirection: 'row-reverse'
+    },
 
     button1: {
       flex: 1,   
-      
+      width:'100%',
       height: 50,
       backgroundColor: '#a9a9a9',
       marginLeft:10,
@@ -1430,11 +1755,19 @@ const styles = StyleSheet.create({
 
   },
 
+  padingLow:{
+      //paddingVertical:10
+      width: '50%',
+      padding:  15
+  },
+
     buttonSection:{
         
         flexDirection: 'row',
-        alignItems: 'center',
-        justifyContent: 'center',
+        width: '100%',
+        
+        //alignItems: 'center',
+        //justifyContent: 'center',
     
       
   },
@@ -1443,9 +1776,20 @@ const styles = StyleSheet.create({
 
     
     flexDirection: 'row',
-    padding: 5,
+    padding: '5@s',
     
     
+},
+ 
+dashboardSection:{
+
+  flexDirection: 'row',
+  flexWrap: 'wrap',
+  padding: '5@s',
+  
+  width: '100%',
+  justifyContent: 'space-evenly',
+  alignContent: 'space-around'
 },
     dropDown:{
 
@@ -1462,6 +1806,8 @@ const styles = StyleSheet.create({
 formSectionOnlySave:{
   padding:5,
   flexDirection: 'row',
+  justifyContent:'flex-end',
+ 
 
 },
 
@@ -1481,7 +1827,8 @@ formSectioncol:{
   widthCollection:{
     padding:5,
     //marginRight:10,
-    width:'45%'
+    
+    width:'49%'
   },
   widthFollowUpDate:{
     //padding:1,
@@ -1526,17 +1873,36 @@ formSectioncol:{
   },
 
   backgroundformP1:{
-      width: '101%',
+      width: '99.5%',
       //height:50,
       
       borderRadius: 10,
 
-      //padding: 15,
-      marginVertical:1,
+      paddingBottom: 10,
+      paddingLeft: 4,
+      //marginVertical:1,
+      marginHorizontal:3,
       backgroundColor: "#00800068"
       
 
   },
+
+  backgroundformP11:{
+    width: '99.5%',
+    //height:50,
+    
+    borderRadius: 10,
+
+    paddingBottom: 10,
+    paddingLeft: 4,
+   // marginVertical: -10,
+     marginVertical: -20,
+    marginHorizontal:3,
+    
+    backgroundColor: "#ff000070"
+    
+
+},
 
   backgroundformP2:{
     width: '106.5%',
@@ -1553,6 +1919,12 @@ formSectioncol:{
 ddcolor:{ 
     fontSize: 20,
     fontWeight: 'bold',
+},
+
+ddcolor5:{ 
+  fontSize: 15,
+  fontWeight: 'bold',
+  
 },
 
 ddcolorList:{ 
@@ -1623,17 +1995,35 @@ TextdecorBoldColor:{
 },
 
 TextdecorBoldColorWicon:{
+  paddingLeft: '8@s',
+  marginVertical: '5@s',
+  fontSize: '14@s',
+  width: '85%',
+  color : 'black'
+  
+},
+
+TextdecorBoldColorWiconLeft:{
+  paddingLeft: '8@s',
+  marginVertical: '5@s',
+  fontSize: '16@s',
+  color : 'black'
+  
+},
+
+TextcolorRed:{
   paddingLeft:8,
   marginVertical:5,
   fontSize: 16,
-  color : 'black'
+  color : 'red'
   
 },
 
 colpadforshow:{
         
   flexDirection: 'column',
-  paddingLeft: 50
+  paddingLeft: '10@s',
+  marginVertical: '10@s'
 },
 rowpadforshow:{
         
@@ -1650,15 +2040,22 @@ formSectionlist:{
 
 },
 formSectionlistWidth:{
-  marginTop: -5,
-  padding:5,
+  marginTop: 55,
+  //marginVertical: 30,
   flexDirection: 'row',
-  height: 165,
+  height: 160,
   width : '100%'
 },
 
 formSectionlistWidthIssue:{
-  marginTop: -20,
+  marginTop: 20,
+  flexDirection: 'row',
+  height: 155,
+  width : '100%'
+},
+
+formSectionlistWidthfollow:{
+  marginTop: -25,
   flexDirection: 'row',
   height: 155,
   width : '100%'
@@ -1667,16 +2064,38 @@ formSectionlistWidthIssue:{
 formSectionRow:{
 
   flexDirection: 'row',
+  paddingLeft: 5,
+  paddingRight:5
 },
 btnwidthSave:{
     //padding: -20,
+    position: 'absolute',
     marginVertical: 3,
   
     marginRight:-10,
     width:120
 },
+
+btnwidthSaveC:{
+  //padding: -20,
+  position: 'absolute',
+  marginVertical: 25,
+
+  marginRight:-10,
+  width:120
+},
+
+btnwidthSaveF:{
+  //padding: -20,
+  //position: 'absolute',
+  marginVertical: 10,
+
+  marginRight:-200,
+  width:120
+  
+},
 backgroundformP2Collect:{
-    width: '103%',
+    width: '100%',
     
     borderRadius: 10,
 
@@ -1687,13 +2106,77 @@ backgroundformP2Collect:{
 },
 
 backgroundformP1Collect:{
-  width: '103%',
+  width: '104%',
   
   borderRadius: 10,
 
   //padding: 15,
-  marginVertical: 20,
+  marginHorizontal:3,
+  marginVertical: -10,
   backgroundColor: "#00800068"
+},
+dashboardBorder:{
+  borderColor: 'black',
+  borderRadius: 5,
+  borderWidth: 1,
+  paddingRight: 0,
+},
+dashboardBorder2:{
+  borderColor: 'black',
+  width: '68%',
+  borderRadius: 5,
+  borderWidth: 1,
+  paddingLeft:5
+  
+  //paddingRight: '10@s',
+  //marginRight:  '20@s',
+  //paddingLeft:  '-10@s'
+},
+dashboard:{
+  color: 'black',
+  fontSize: '17@s',
+  paddingLeft: '-5@s',
+  width: 'auto',
+  
+},
+
+formSectioncolDash:{
+  flexDirection: "column",
+  width: '28%',
+  paddingRight: 5,
+},
+paddingUp:{
+  marginVertical: '-20@s',
+  paddingBottom: '10@s'
+},
+paddingButton1:{
+  paddingLeft: 10,
+  paddingRight: 10,
+  width: '32%',
+  position: 'relative'
+},
+paddingButton0:{
+  
+  width: '31%',
+  position: 'relative'
+},
+designDateFilter:{
+  width: '47%',
+  //padding: 5,
+  //paddingRight: -35,
+  marginHorizontal: -30,
+  paddingTop: 25
+  
+},
+borderFooter:{
+  height:1 ,
+  width: '100%',
+  marginHorizontal: 10,
+  marginVertical: -10,
+  backgroundColor: 'black'
+},
+flex1:{
+  flex: 1
 }
 
 });
